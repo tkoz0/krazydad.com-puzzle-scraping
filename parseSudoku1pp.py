@@ -11,11 +11,12 @@ import tqdm
 import re
 import json
 import sys
+import bz2
 
-INPUT_DIR = 'sudoku1pp.xml.tmp'
+INPUT_DIR = 'sudoku1pp_xml_tmp'
 
 # groups: difficulty, volume, book
-FNAME_RE = re.compile(r'KD_Sudoku_([A-Z][A-Z])(\d*)_8_v(\d+).xml')
+FNAME_RE = re.compile(r'KD_Sudoku_([A-Z][A-Z])(\d*)_8_v(\d+).xml.bz2')
 
 # all 81 possible cell text positions
 # (x0,y0,x1,y1), bottom left is (0,0), box is (x0,y0),(x1,y1) where x0<x1,y0<y1
@@ -66,6 +67,7 @@ def extract_text(xml: bs4.BeautifulSoup) -> List[Dict[str,str]]:
     # (9 and 10 are hints and answers, do not care about those)
     # page num -> page object
     pages = {page.attrs['id']: page for page in xml.findAll('page')}
+    assert len(pages) == 10
     result: List[Dict[str,str]] = [] # for each puzzle (1..8) the (position -> digit) mapping
     for page in range(1,9):
         page = pages[str(page)]
@@ -80,6 +82,30 @@ def extract_text(xml: bs4.BeautifulSoup) -> List[Dict[str,str]]:
         result.append(cells)
     return result
 
+# brute force sudoku solver
+def solve_recur(puzzle: List[List[int]], pos: int) -> List[List[List[int]]]:
+    if pos == 81:
+        return [[row[:] for row in puzzle]]
+    r,c = divmod(pos,9)
+    br,bc = (r//3)*3, (c//3)*3 # upper left of block
+    if puzzle[r][c] != 0:
+        return solve_recur(puzzle,pos+1)
+    digits = [True]*10 # digits possible in cell
+    for i in range(9):
+        digits[puzzle[r][i]] = False # row
+        digits[puzzle[i][c]] = False # col
+        digits[puzzle[br+(i//3)][bc+(i%3)]] = False # block
+    solns = []
+    for d in range(1,10): # try digits
+        if not digits[d]:
+            continue
+        puzzle[r][c] = d
+        solns += solve_recur(puzzle,pos+1)
+        if len(solns) > 1: # error if multiple solutions
+            break
+    puzzle[r][c] = 0 # backtrack
+    return [] if len(solns) > 1 else solns
+
 files = os.listdir(INPUT_DIR)
 
 for file in tqdm.tqdm(files):
@@ -88,9 +114,10 @@ for file in tqdm.tqdm(files):
     dif,vol,book = match.groups()
     tqdm.tqdm.write('parsing: '+file+' (dif = %s, vol = %d, book = %d)'%(dif, 1 if vol == '' else int(vol), int(book)), sys.stderr)
     file = INPUT_DIR+'/'+file
-    xml = bs4.BeautifulSoup(open(file,'r').read(),features='xml')
+    xml = bs4.BeautifulSoup(bz2.open(file,'r').read(),features='xml')
     text = extract_text(xml)
     for p,page in enumerate(text):
+        #tqdm.tqdm.write('- puzzle '+str(p+1), sys.stderr)
         puzzle = [[0]*9 for _ in range(9)]
         for pos,digit in page.items():
             digit = int(digit)
@@ -98,6 +125,8 @@ for file in tqdm.tqdm(files):
             assert puzzle[r][c] == 0
             assert 1 <= digit <= 9
             puzzle[r][c] = int(digit)
+        solns = solve_recur(puzzle,0)
+        assert len(solns) == 1
         # convert to string of 81 chars
         puzzle_str = ''.join(''.join(map(str,row)) for row in puzzle)
         puzzle_json = json.dumps({
