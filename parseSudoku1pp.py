@@ -1,7 +1,7 @@
 '''
 Parser for the 1 per page sudoku pdfs. Outputs 1 JSON object per line to stdout.
 Set INPUT_DIR to be the directory with the xml files from pdf2txt.py
-Then run "python3 parseSudoku1pp.py > output.jsonl"
+Then run "python3 parseSudoku1pp.py > output.csv"
 '''
 
 import os
@@ -12,9 +12,8 @@ import re
 import json
 import sys
 import bz2
-import random
 
-INPUT_DIR = 'sudoku1pp_xml_tmp'
+INPUT_DIR = 'sudoku1pp_xml'
 
 # groups: difficulty, volume, book
 FNAME_RE = re.compile(r'KD_Sudoku_([A-Z][A-Z])(\d*)_8_v(\d+).xml.bz2')
@@ -255,15 +254,28 @@ def make_puzzle(pos_map: Dict[str,Tuple[int,int]], page_items: Dict[str,str]) ->
     assert len(solns) == 1
     return puzzle
 
-files = os.listdir(INPUT_DIR)
-random.shuffle(files)
+# difficulty(7 levels), vol(1..20 currently), book(1..100)
+def _files_sort(file: str) -> int:
+    match = FNAME_RE.fullmatch(file)
+    assert match
+    dif,vol,book = match.groups()
+    vol = 1 if vol == '' else int(vol)
+    book = int(book)
+    diffs = ['EZ','NO','IM','CH','TF','ST','IN']
+    return diffs.index(dif)*1000000 + vol*1000 + book
+
+files = sorted(os.listdir(INPUT_DIR), key=_files_sort)
 #_p=set() # for collecting possible positions
+
+print('DIFFICULTY,VOLUME,BOOK,NUMBER,PUZZLE') # header row
 
 for file in tqdm.tqdm(files):
     match = FNAME_RE.fullmatch(file)
     assert match
     dif,vol,book = match.groups()
-    tqdm.tqdm.write('parsing: '+file+' (dif = %s, vol = %d, book = %d)'%(dif, 1 if vol == '' else int(vol), int(book)), sys.stderr)
+    vol = 1 if vol == '' else int(vol)
+    book = int(book)
+    tqdm.tqdm.write('parsing: '+file+' (dif = %s, vol = %d, book = %d)'%(dif,vol,book), sys.stderr)
     file = INPUT_DIR+'/'+file
     file_data = bz2.open(file,'rt').read()
     assert file_data.splitlines()[-1] == '</pages>', file_data.splitlines()[-1] # check if file is complete
@@ -279,14 +291,15 @@ for file in tqdm.tqdm(files):
             puzzle = make_puzzle(POS_MAP2,page)
         # convert to string of 81 chars
         puzzle_str = ''.join(''.join(map(str,row)) for row in puzzle)
-        puzzle_json = json.dumps({
-            'dif': dif,
-            'vol': 1 if vol == '' else int(vol),
-            'book': int(book),
-            'num': p+1,
-            'puzzle': puzzle_str
-        }, separators=(',',':'))
-        print(puzzle_json)
+        #puzzle_json = json.dumps({
+        #    'dif': dif,
+        #    'vol': 1 if vol == '' else int(vol),
+        #    'book': int(book),
+        #    'num': p+1,
+        #    'puzzle': puzzle_str
+        #}, separators=(',',':'))
+        #print(puzzle_json)
+        print('%s,%d,%d,%d,%s'%(dif,vol,book,p+1,puzzle_str))
 
 #print(_p)
 #print(_p.__len__())
