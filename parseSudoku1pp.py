@@ -1,5 +1,5 @@
 '''
-Parser for the 1 per page sudoku pdfs. Outputs 1 JSON object per line to stdout.
+Parser for the 1 per page sudoku pdfs. Outputs a CSV file to stdout.
 Set INPUT_DIR to be the directory with the xml files from pdf2txt.py
 Then run "python3 parseSudoku1pp.py > output.csv"
 '''
