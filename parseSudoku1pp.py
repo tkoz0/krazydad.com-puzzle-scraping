@@ -2,6 +2,7 @@
 Parser for the 1 per page sudoku pdfs. Outputs a CSV file to stdout.
 Set INPUT_DIR to be the directory with the xml files from pdf2txt.py
 Then run "python3 parseSudoku1pp.py > output.csv"
+0 means empty cell
 '''
 
 import os
@@ -9,7 +10,6 @@ from typing import Dict, List, Tuple, Union
 import bs4
 import tqdm
 import re
-import json
 import sys
 import bz2
 
@@ -170,7 +170,7 @@ def solve_recur(puzzle: List[List[int]]) -> List[List[List[int]]]:
                 if n not in puzzle[i]:
                     pos = []
                     for c,digits in enumerate(allowed[i]):
-                        if digits[n]: pos.append((i,c))
+                        if puzzle[i][c] == 0 and digits[n]: pos.append((i,c))
                     if len(pos) == 0:
                         return [] # impossible
                     if len(pos) == 1:
@@ -182,7 +182,7 @@ def solve_recur(puzzle: List[List[int]]) -> List[List[List[int]]]:
                 if n not in [puzzle[r][i] for r in range(9)]:
                     pos = []
                     for r in range(9):
-                        if allowed[r][i][n]: pos.append((r,i))
+                        if puzzle[r][i] == 0 and allowed[r][i][n]: pos.append((r,i))
                     if len(pos) == 0:
                         return [] # impossible
                     if len(pos) == 1:
@@ -195,7 +195,7 @@ def solve_recur(puzzle: List[List[int]]) -> List[List[List[int]]]:
                     pos = []
                     for dr in range(3):
                         for dc in range(3):
-                            if allowed[3*br+dr][3*bc+dc][n]:
+                            if puzzle[3*br+dr][3*bc+dc] == 0 and allowed[3*br+dr][3*bc+dc][n]:
                                 pos.append((3*br+dr,3*bc+dc))
                     if len(pos) == 0:
                         return [] # impossible
