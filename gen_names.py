@@ -1,4 +1,29 @@
-# filename generator for krazydad scraping
+'''
+Filename generator for krazydad scraping
+
+To use, run a function for generating the file names. Take this result and use
+the URL above (replacing * with one of the file names) to get all the URLs to
+download.
+
+Some ways to do this are (assuming gen_names.py is in the parent directory):
+
+1. With a loop
+
+for f in $(python3 ../gen_names.py); do proxychains wget -nc -e robots=off -U "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0" $BASE_URL/$f; done
+
+2. With GNU parallel
+
+# python3 ../gen_names.py | parallel -j1 proxychains wget -nc -e robots=off -U "\"Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0\"" "\"$BASE_URL/{}\""
+
+Notes:
+- proxychains is used because the site seems to not like many downloads from the same IP
+- the default wget user agent string is not accepted
+- $BASE_URL is the directory on the server with all the files, specified as a comment above the appropriate function
+- -nc is used to avoid downloading files already downloaded, but this also means it will not overwrite incomplete downloads
+- downloads seem to fail a bunch so the command may need to be run several times until all the files are obtained
+- some downloads may be incomplete (broken pdf file with size smaller than other files in its category), delete those and run the command again
+- see missing_files.txt for a list of files that are missing or broken on the server
+'''
 
 # https://krazydad.com/sudoku/sfiles/*
 def sudokuComplete():
@@ -321,9 +346,5 @@ def haunted():
     for vol in range(1,3):
         for book in range(1,101):
             print('KD_Haunted_V%d_N%d.pdf'%(vol,book))
-
-# command examples
-# for f in $(python3 ../gen_names.py); do proxychains wget -nc -e robots=off -U "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0" $BASE_URL/$f; done
-# python3 ../gen_names.py | parallel -j1 proxychains wget -nc -e robots=off -U "\"Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0\"" "\"$BASE_URL/{}\""
 
 if __name__ == '__main__': pass
