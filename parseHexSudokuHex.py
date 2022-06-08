@@ -439,7 +439,7 @@ def solve_recur(puzzle: List[List[int]]) -> List[List[List[int]]]:
         if len(solns) > 1: break # error if >1 solution
     return [] if len(solns) > 1 else solns
 
-def make_puzzle(pos_map: Dict[str,Tuple[int,int]], page_items: Dict[str,str]) -> List[List[int]]:
+def make_puzzle(pos_map: Dict[str,Tuple[int,int]], page_items: Dict[str,str]) -> Tuple[List[List[int]],List[List[int]]]:
     global _p
     puzzle = [[0]*16 for _ in range(16)]
     for pos,digit in page_items.items():
@@ -451,7 +451,7 @@ def make_puzzle(pos_map: Dict[str,Tuple[int,int]], page_items: Dict[str,str]) ->
     puzzle_copy = [row[:] for row in puzzle]
     solns = solve_recur(puzzle_copy)
     assert len(solns) == 1
-    return puzzle
+    return puzzle,solns[0]
 
 # difficulty(7 levels), vol(1..20 currently), book(1..100)
 def _files_sort(file: str) -> int:
@@ -467,7 +467,7 @@ files = sorted(os.listdir(INPUT_DIR), key=_files_sort)
 #import random
 #random.shuffle(files)
 
-print('DIFFICULTY,VOLUME,BOOK,NUMBER,PUZZLE') # header row
+print('DIFFICULTY,VOLUME,BOOK,NUMBER,PUZZLE,SOLUTION') # header row
 
 for file in tqdm.tqdm(files):
     match = FNAME_RE.fullmatch(file)
@@ -485,7 +485,8 @@ for file in tqdm.tqdm(files):
         #_p|=set(page.keys())
         #continue
         #tqdm.tqdm.write('- puzzle '+str(p+1), sys.stderr)
-        puzzle = make_puzzle(POS_MAP,page)
+        puzzle,solution = make_puzzle(POS_MAP,page)
         # convert to string of 256 chars
         puzzle_str = ''.join(''.join('.' if n == 0 else '0123456789abcdef'[n-1] for n in row) for row in puzzle)
-        print('%s,%d,%d,%d,%s'%(dif,vol,book,p+1,puzzle_str))
+        solution_str = ''.join(''.join('0123456789abcdef'[n-1] for n in row) for row in solution)
+        print('%s,%d,%d,%d,%s,%s'%(dif,vol,book,p+1,puzzle_str,solution_str))

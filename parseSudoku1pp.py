@@ -2,7 +2,7 @@
 Parser for the 1 per page sudoku pdfs. Outputs a CSV file to stdout.
 Set INPUT_DIR to be the directory with the xml files from pdf2txt.py
 Then run "python3 parseSudoku1pp.py > output.csv"
-0 means empty cell
+. means empty cell
 '''
 
 import os
@@ -241,7 +241,7 @@ def solve_recur(puzzle: List[List[int]]) -> List[List[List[int]]]:
     # puzzle[r][c] = 0 # backtrack
     # return [] if len(solns) > 1 else solns
 
-def make_puzzle(pos_map: Dict[str,Tuple[int,int]], page_items: Dict[str,str]) -> List[List[int]]:
+def make_puzzle(pos_map: Dict[str,Tuple[int,int]], page_items: Dict[str,str]) -> Tuple[List[List[int]],List[List[int]]]:
     puzzle = [[0]*9 for _ in range(9)]
     for pos,digit in page_items.items():
         digit = int(digit)
@@ -252,7 +252,7 @@ def make_puzzle(pos_map: Dict[str,Tuple[int,int]], page_items: Dict[str,str]) ->
     puzzle_copy = [row[:] for row in puzzle]
     solns = solve_recur(puzzle_copy)
     assert len(solns) == 1
-    return puzzle
+    return puzzle,solns[0]
 
 # difficulty(7 levels), vol(1..20 currently), book(1..100)
 def _files_sort(file: str) -> int:
@@ -267,7 +267,7 @@ def _files_sort(file: str) -> int:
 files = sorted(os.listdir(INPUT_DIR), key=_files_sort)
 #_p=set() # for collecting possible positions
 
-print('DIFFICULTY,VOLUME,BOOK,NUMBER,PUZZLE') # header row
+print('DIFFICULTY,VOLUME,BOOK,NUMBER,PUZZLE,SOLUTION') # header row
 
 for file in tqdm.tqdm(files):
     match = FNAME_RE.fullmatch(file)
@@ -286,11 +286,12 @@ for file in tqdm.tqdm(files):
         #continue
         #tqdm.tqdm.write('- puzzle '+str(p+1), sys.stderr)
         try:
-            puzzle = make_puzzle(POS_MAP,page)
+            puzzle,solution = make_puzzle(POS_MAP,page)
         except:
-            puzzle = make_puzzle(POS_MAP2,page)
+            puzzle,solution = make_puzzle(POS_MAP2,page)
         # convert to string of 81 chars
-        puzzle_str = ''.join(''.join(map(str,row)) for row in puzzle)
+        puzzle_str = ''.join(''.join('.' if n == 0 else str(n) for n in row) for row in puzzle)
+        solution_str = ''.join(''.join(map(str,row)) for row in solution)
         #puzzle_json = json.dumps({
         #    'dif': dif,
         #    'vol': 1 if vol == '' else int(vol),
@@ -299,7 +300,7 @@ for file in tqdm.tqdm(files):
         #    'puzzle': puzzle_str
         #}, separators=(',',':'))
         #print(puzzle_json)
-        print('%s,%d,%d,%d,%s'%(dif,vol,book,p+1,puzzle_str))
+        print('%s,%d,%d,%d,%s,%s'%(dif,vol,book,p+1,puzzle_str,solution_str))
 
 #print(_p)
 #print(_p.__len__())
